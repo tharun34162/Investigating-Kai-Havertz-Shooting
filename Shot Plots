@@ -1,0 +1,65 @@
+####### Figure-2 & Figure-4
+library(understatr)
+library(tidyverse)
+library(ggplot2)
+library(ggsoccer)
+require(gridExtra)
+
+player_select = 5220
+shots = get_player_shots(player_select)
+
+NPS = shots %>% filter(situation != "Penalty")
+
+NPS$X2 = NPS$X*100
+NPS$Y2 = NPS$Y*100
+
+NPS$Location = 
+  ifelse(NPS$X2 < 83 | NPS$X2 >= 83 & NPS$Y2 > 78.9 
+         | NPS$X2 >= 83 & NPS$Y2 < 21.1 , "Outside the Box", 
+         ifelse(NPS$X2 >= 94.2 & NPS$Y2 >= 36.8  
+                & NPS$Y2 <= 63.2, "Six Yard Box", "Penalty Area"))
+
+##################
+
+BLS = NPS %>% filter(date < '2020-09-26'
+                     #& Location == "Six Yard Box"
+                     ) # Bundesliga Shots
+
+PLS = NPS %>% filter(date >= '2020-09-26'
+                     #& Location == "Six Yard Box"
+                     ) # PL Shots
+
+p1 = ggplot() +
+  annotate_pitch(dimensions = pitch_opta) +
+  
+  geom_point(data = BLS %>% filter(result != "Goal"), alpha = 0.75, aes(x = X2, y = Y2), 
+             color = "green", size = 3) +
+  geom_point(data = BLS %>% filter(result == "Goal"), alpha = 0.75, aes(x = X2, y = Y2), 
+             color = "blue", size = 3) +
+  
+  theme_pitch() +
+  coord_flip(xlim =c(50, 100)) + scale_y_reverse() +
+  labs(title = paste(unique(NPS$player), ": Bundesliga"), 
+       subtitle = paste0("Goals: ", nrow(BLS %>% filter(result == "Goal")), "\nShots: ", nrow(BLS), 
+                         " | Conversion: ", round(nrow(BLS %>% filter(result == "Goal"))*100/nrow(BLS), digits=2),"%", 
+                         "\nxG: ", round(sum(BLS$xG), digits = 2), 
+                         " | xGR: ", round(nrow(BLS %>% filter(result == "Goal"))/sum(BLS$xG), digits = 2))) 
+
+p2 = ggplot() +
+  annotate_pitch(dimensions = pitch_opta) +
+  
+  geom_point(data = PLS %>% filter(result != "Goal"), alpha = 0.75, aes(x = X2, y = Y2), 
+             color = "green", size = 3) +
+  geom_point(data = PLS  %>% filter(result == "Goal"), alpha = 0.75, aes(x = X2, y = Y2), 
+             color = "blue", size = 3) +
+  
+  theme_pitch() +
+  coord_flip(xlim =c(50, 100)) + scale_y_reverse() +
+  labs(title = paste(unique(NPS$player), ": Premier League"), 
+       subtitle = paste0("Goals: ", nrow(PLS %>% filter(result == "Goal")), "\nShots: ", nrow(PLS), 
+                         " | Conversion: ", round(nrow(PLS %>% filter(result == "Goal"))*100/nrow(PLS), digits=2),"%", 
+                         "\nxG: ", round(sum(PLS$xG), digits = 2), 
+                         " | xGR: ", round(nrow(PLS %>% filter(result == "Goal"))/sum(PLS$xG), digits = 2))) 
+
+
+grid.arrange(p1, p2, ncol=2)
